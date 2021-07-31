@@ -4,15 +4,17 @@ import { Box, Grid, Typography, TextField, Button } from "@material-ui/core";
 import styles from "./styles";
 import { BACKEND_URL } from './apiConfig';
 
-const ERROR_MESSAGES = {
-  name: "This field is required.",
-  email: "Email is not valid.",
-  mobile: "Phone number must be valid and contain 10 digits.",
+const MESSAGES = {
+  nameError: "This field is required.",
+  emailError: "Email is not valid.",
+  mobileError: "Phone number must be valid and contain 10 digits.",
+  fileError: "Please select a file",
+  fileUploadSuccess: "Successfully uploaded the file",
+  fileUploadFailure: "Error while uploading the file"
 }
 
 const Home = () => {
   const classes = styles();
-
 
   const [user, setUser] = useState({
     name: '',
@@ -22,7 +24,10 @@ const Home = () => {
 
   const [image, setImage] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
-  const [errors, setErrors] = useState({})
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [mobileError, setMobileError] = useState('');
+  const [fileError, setFileError] = useState('');
 
   const handleChange = event => {
     const { name, value } = event.target;
@@ -31,54 +36,75 @@ const Home = () => {
   };
 
   const validate = (type, value) => {
-    let err = { ...errors };
     if (type === 'name') {
-      err.name = value === '';
+      // err.name = value === '';
+      setNameError(value === '');
     } else if (type === 'email') {
-      err.email = !(/.+@.+..+/).test(value);
+      // err.email = !(/.+@.+..+/).test(value);
+      setEmailError(!(/.+@.+..+/).test(value));
+    } else if (type === "mobile") {
+      // err.mobile = !(/^[6-9]\d{9}$/).test(value);
+      setMobileError(!(/^[6-9]\d{9}$/).test(value));
     } else {
-      err.mobile = !(/^[6-9]\d{9}$/).test(value);
+      setFileError(value === '');
     }
-    setErrors({ ...err })
   }
 
   const onFileUpload = (e) => {
     const file = e.target.files[0];
     setImage(file);
+    setFileError(false);
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (errors.name !== undefined
-      && errors.email !== undefined
-      && errors.mobile !== undefined
-      && !errors.name
-      && !errors.email
-      && !errors.mobile
-      && image !== ''
+    if (nameError !== undefined
+      && emailError !== undefined
+      && mobileError !== undefined
+      && fileError !== ''
+      && !nameError
+      && !emailError
+      && !mobileError
     ) {
       const formData = new FormData();
       formData.append("file", image);
 
-      const url = BACKEND_URL + "/data/?name=" + user.name + "&email=" + user.email + "&mobile=" + user.mobile; 
+      const url = BACKEND_URL + "/data/?name=" + user.name + "&email=" + user.email + "&mobile=" + user.mobile;
       const response = await fetch(url, {
         method: "POST",
         body: formData
       });
       if (response.status === 201) {
+        setUser({
+          name: '',
+          email: '',
+          mobile: ''
+        });
+        setImage('');
+        setUploadStatus('');
+        setNameError('');
+        setEmailError('');
+        setMobileError('');
+        setFileError('');
         setUploadStatus(true);
       } else {
         setUploadStatus(false);
       }
+    } else {
+      validate('name', user.name);
+      validate('email', user.email);
+      validate('mobile', user.mobile);
+      validate('file', image);
     }
   }
+
   return (
     <Grid container className={classes.root} spacing={2}>
       <Grid className={classes.main} item xs={12} sm={10} md={11} lg={8} xl={3} >
         <Grid className={classes.introduction} item xs={12} sm={8} md={7} lg={5} xl={3}>
           {uploadStatus !== '' && (uploadStatus
-            ? <div>Successfully uploaded the file</div>
-            : <div>Error while uploading the file</div>
+            ? <div className={classes.successMessage}>{MESSAGES.fileUploadSuccess}</div>
+            : <div className={classes.failureMessage}>{MESSAGES.fileUploadFailure}</div>
           )}
           <form className={classes.flex} autoComplete="off" onSubmit={handleSubmit}>
 
@@ -88,8 +114,8 @@ const Home = () => {
               name='name'
               value={user.name}
               inputProps={{ maxLength: 25 }}
-              error={errors.name}
-              helperText={errors.name && ERROR_MESSAGES.name}
+              error={nameError}
+              helperText={nameError && MESSAGES.nameError}
               onChange={handleChange}
             />
 
@@ -98,8 +124,8 @@ const Home = () => {
               label="Email"
               name='email'
               value={user.email}
-              error={errors.email}
-              helperText={errors.email && ERROR_MESSAGES.email}
+              error={emailError}
+              helperText={emailError && MESSAGES.emailError}
               onChange={handleChange}
             />
 
@@ -110,29 +136,33 @@ const Home = () => {
               value={user.mobile}
               onChange={handleChange}
               inputProps={{ maxLength: 10 }}
-              error={errors.mobile}
-              helperText={errors.mobile && ERROR_MESSAGES.mobile}
+              error={mobileError}
+              helperText={mobileError && MESSAGES.mobileError}
             />
 
-            <input
-              accept="image/*"
-              className={classes.input}
-              id="contained-button-file"
-              multiple
-              type="file"
-              onChange={onFileUpload}
-            />
-            <label htmlFor="contained-button-file">
-              <Button variant="contained" color="primary" component="span">
-                Upload
-              </Button>
-              <Button className={classes.btn} variant="contained" type="submit" color="primary">
-                Submit
-              </Button>
-            </label>
+            <div>
+              <input
+                accept="image/*"
+                className={classes.input}
+                id="contained-button-file"
+                multiple
+                type="file"
+                onChange={onFileUpload}
+              />
+              <label htmlFor="contained-button-file">
+                <Button variant="outlined" component="span">
+                  Choose File
+                </Button>
+                {image && <span className={classes.imageName}>{image.name} selected</span>}
+                {fileError && <span className={classes.imageErrorMessage}>{MESSAGES.fileError}</span>}
+              </label>
+            </div>
+            <Button className={classes.submitButton} variant="contained" type="submit" color="secondary">
+              Submit
+            </Button>
           </form>
         </Grid>
-        <Grid className={classes.left} item xs={4} sm={7} md={6} lg={5} xl={3}></Grid>
+        <Grid className={classes.img} item xs={4} sm={7} md={6} lg={5} xl={3}></Grid>
       </Grid>
     </Grid>
   );
